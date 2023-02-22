@@ -1,0 +1,19 @@
+[package]
+name = "pbr"
+version = "0.1.0"
+description = "Console progress bar"
+authors = ["XXIV"]
+homepage = "https://github.com/thechampagne/libpbr"
+repository = "https://github.com/thechampagne/libpbr"
+readme = "README.md"
+license = "MIT"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "pbr"
+crate-type =["cdylib","staticlib"]
+
+[dependencies]
+pbr = "1.1.1"
