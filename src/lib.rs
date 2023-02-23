@@ -55,7 +55,8 @@ struct pbr_pipe_t {
 
 #[repr(C)]
 struct pbr_progress_bar_t {
-    progress_bar: *mut c_void
+    progress_bar: *mut c_void,
+    handle: pbr_handle_t
 }
 
 #[repr(C)]
@@ -117,7 +118,8 @@ unsafe extern "C" fn pbr_multi_bar_create_bar(multi_bar: *const pbr_multi_bar_t,
 	pb = mb.create_bar(total);
     }
     pbr_progress_bar_t {
-	progress_bar: Box::into_raw(Box::new(pb)) as *mut c_void
+	progress_bar: Box::into_raw(Box::new(pb)) as *mut c_void,
+	handle: pbr_handle_t::PBR_HANDLE_STDOUT
     }
 }
 
@@ -129,5 +131,204 @@ unsafe extern "C" fn pbr_multi_bar_listen(multi_bar: *const pbr_multi_bar_t) {
     } else {
 	let mb = &*((*multi_bar).multi_bar as *mut MultiBar<Stderr>);
 	mb.listen();
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_new(total: u64) -> pbr_progress_bar_t {
+    let progress_bar = ProgressBar::new(total);
+    pbr_progress_bar_t {
+	progress_bar: Box::into_raw(Box::new(progress_bar)) as *mut c_void,
+	handle: pbr_handle_t::PBR_HANDLE_STDOUT
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_on(handle: pbr_handle_t, total: u64) -> pbr_progress_bar_t {
+    if handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let progress_bar = ProgressBar::on(stdout(), total);
+	pbr_progress_bar_t {
+	    progress_bar: Box::into_raw(Box::new(progress_bar)) as *mut c_void,
+	    handle: pbr_handle_t::PBR_HANDLE_STDOUT
+	}
+    } else {
+	let progress_bar = ProgressBar::on(stderr(), total);
+	pbr_progress_bar_t {
+	    progress_bar: Box::into_raw(Box::new(progress_bar)) as *mut c_void,
+	    handle: pbr_handle_t::PBR_HANDLE_STDERR
+	}
+    }
+}
+
+fn c_units_to_rust_units(units: pbr_units_t) -> Units {
+    match units {
+	pbr_units_t::PBR_UNITS_DEFAULT => Units::Default,
+	pbr_units_t::PBR_UNITS_BYTES => Units::Bytes
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_set_units(progress_bar: *mut pbr_progress_bar_t, units: pbr_units_t) {
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.set_units(c_units_to_rust_units(units));
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.set_units(c_units_to_rust_units(units));
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_format(progress_bar: *mut pbr_progress_bar_t, fmt: *const c_char) {
+    let cstr = match CStr::from_ptr(fmt).to_str() {
+	Ok(s) => s,
+	Err(_) => return
+    };
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.format(cstr);
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.format(cstr);
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_message(progress_bar: *mut pbr_progress_bar_t, message: *const c_char) {
+    let cstr = match CStr::from_ptr(message).to_str() {
+	Ok(s) => s,
+	Err(_) => return
+    };
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.message(cstr);
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.message(cstr);
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_tick_format(progress_bar: *mut pbr_progress_bar_t, tick_fmt: *const c_char) {
+    let cstr = match CStr::from_ptr(tick_fmt).to_str() {
+	Ok(s) => s,
+	Err(_) => return
+    };
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.tick_format(cstr);
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.tick_format(cstr);
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_set_width(progress_bar: *mut pbr_progress_bar_t, w: usize) {
+    let rw = if w == 0 { None } else { Some(w) };
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.set_width(rw);
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.set_width(rw);
+    }
+}
+
+// TODO: fn set_max_refresh_rate(&mut self, w: Option<Duration>)
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_tick(progress_bar: *mut pbr_progress_bar_t) {
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.tick();
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.tick();
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_add(progress_bar: *mut pbr_progress_bar_t, i: u64) -> u64 {
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	return mb.add(i);
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	return mb.add(i);
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_set(progress_bar: *mut pbr_progress_bar_t, i: u64) -> u64 {
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	return mb.set(i);
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	return mb.set(i);
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_inc(progress_bar: *mut pbr_progress_bar_t) -> u64 {
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	return mb.inc();
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	return mb.inc();
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_reset_start_time(progress_bar: *mut pbr_progress_bar_t) {
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.reset_start_time();
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.reset_start_time();
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_finish(progress_bar: *mut pbr_progress_bar_t) {
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.finish();
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.finish();
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_finish_print(progress_bar: *mut pbr_progress_bar_t, s: *const c_char) {
+    let cstr = match CStr::from_ptr(s).to_str() {
+	Ok(s) => s,
+	Err(_) => return
+    };
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.finish_print(cstr);
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.finish_print(cstr);
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_finish_println(progress_bar: *mut pbr_progress_bar_t, s: *const c_char) {
+    let cstr = match CStr::from_ptr(s).to_str() {
+	Ok(s) => s,
+	Err(_) => return
+    };
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.finish_println(cstr);
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.finish_println(cstr);
     }
 }
