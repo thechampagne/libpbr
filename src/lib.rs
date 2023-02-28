@@ -348,3 +348,23 @@ unsafe extern "C" fn pbr_progress_bar_finish_println(progress_bar: *mut pbr_prog
 	mb.finish_println(cstr);
     }
 }
+
+mod test {
+
+    use std::thread;
+    use crate::*;
+    
+    #[test]
+    fn test() {
+	unsafe {
+	    let count = 100;
+	    let mut pb = pbr_progress_bar_new(count);
+	    pbr_progress_bar_format(&mut pb as *mut pbr_progress_bar_t,"╢▌▌░╟\0".as_ptr() as *const c_char);
+	    for _ in 0..count {
+		pbr_progress_bar_inc(&mut pb as *mut pbr_progress_bar_t);
+		#[allow(deprecated)]
+		thread::sleep_ms(200);
+	    }
+	}
+    }
+}
