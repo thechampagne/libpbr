@@ -97,6 +97,10 @@ extern void pbr_progress_bar_finish(pbr_progress_bar_t* progress_bar);
 extern void pbr_progress_bar_finish_print(pbr_progress_bar_t* progress_bar, const char* s);
 
 extern void pbr_progress_bar_finish_println(pbr_progress_bar_t* progress_bar, const char* s);
+
+extern void pbr_multi_bar_clean(pbr_multi_bar_t* multi_bar);
+
+extern void pbr_progress_bar_clean(pbr_progress_bar_t* progress_bar);
   
 #ifdef __cplusplus
 }

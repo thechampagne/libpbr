@@ -349,6 +349,28 @@ unsafe extern "C" fn pbr_progress_bar_finish_println(progress_bar: *mut pbr_prog
     }
 }
 
+#[no_mangle]
+unsafe extern "C" fn pbr_multi_bar_clean(multi_bar: *mut pbr_multi_bar_t) {
+    if !multi_bar.is_null() {
+	if (*multi_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	    let _ = Box::from_raw((*multi_bar).multi_bar as *mut MultiBar<Stdout>);
+	} else {
+	    let _ = Box::from_raw((*multi_bar).multi_bar as *mut MultiBar<Stderr>);
+	}
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_clean(progress_bar: *mut pbr_progress_bar_t) {
+    if !progress_bar.is_null() {
+	if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	    let _ = Box::from_raw((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	} else {
+	    let _ = Box::from_raw((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	}
+    }
+}
+
 mod test {
 
     use std::thread;
@@ -365,6 +387,7 @@ mod test {
 		#[allow(deprecated)]
 		thread::sleep_ms(200);
 	    }
+	    pbr_progress_bar_clean(&mut pb as *mut pbr_progress_bar_t);
 	}
     }
 }

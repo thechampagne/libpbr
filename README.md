@@ -93,6 +93,10 @@ void pbr_progress_bar_finish(pbr_progress_bar_t* progress_bar);
 void pbr_progress_bar_finish_print(pbr_progress_bar_t* progress_bar, const char* s);
 
 void pbr_progress_bar_finish_println(pbr_progress_bar_t* progress_bar, const char* s);
+
+void pbr_multi_bar_clean(pbr_multi_bar_t* multi_bar);
+
+void pbr_progress_bar_clean(pbr_progress_bar_t* progress_bar);
 ```
 
 ### References
