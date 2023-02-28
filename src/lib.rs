@@ -23,9 +23,8 @@ use std::os::raw::c_void;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::io::{Stdout, Stderr, stdout, stderr};
+use std::time::Duration;
 use pbr::MultiBar;
-use pbr::PbIter;
-use pbr::Pipe;
 use pbr::ProgressBar;
 use pbr::Units;
 
@@ -44,26 +43,41 @@ struct pbr_multi_bar_t {
 }
 
 #[repr(C)]
-struct pbr_pbiter_t {
-    pbiter: *mut c_void
-}
-
-#[repr(C)]
-struct pbr_pipe_t {
-    pipe: *mut c_void
-}
-
-#[repr(C)]
 struct pbr_progress_bar_t {
     progress_bar: *mut c_void,
     handle: pbr_handle_t
 }
 
 #[repr(C)]
-#[allow(non_camel_case_types)]
+#[allow(non_camel_case_types, dead_code)]
+enum pbr_duration_t {
+    PBR_DURATION_MICROS,
+    PBR_DURATION_MILLIS,
+    PBR_DURATION_NANOS,
+    PBR_DURATION_SECS,
+}
+
+#[repr(C)]
+#[allow(non_camel_case_types, dead_code)]
 enum pbr_units_t {
     PBR_UNITS_DEFAULT,
     PBR_UNITS_BYTES,
+}
+
+fn c_units_to_rust_units(units: pbr_units_t) -> Units {
+    match units {
+	pbr_units_t::PBR_UNITS_DEFAULT => Units::Default,
+	pbr_units_t::PBR_UNITS_BYTES => Units::Bytes
+    }
+}
+
+fn c_duration_to_rust_duration(duration: pbr_duration_t, w: u64) -> Duration {
+    match duration {
+	pbr_duration_t::PBR_DURATION_MICROS => Duration::from_micros(w),
+	pbr_duration_t::PBR_DURATION_MILLIS => Duration::from_millis(w),
+	pbr_duration_t::PBR_DURATION_NANOS => Duration::from_nanos(w),
+	pbr_duration_t::PBR_DURATION_SECS => Duration::from_secs(w),
+    }
 }
 
 #[no_mangle]
@@ -160,13 +174,6 @@ unsafe extern "C" fn pbr_progress_bar_on(handle: pbr_handle_t, total: u64) -> pb
     }
 }
 
-fn c_units_to_rust_units(units: pbr_units_t) -> Units {
-    match units {
-	pbr_units_t::PBR_UNITS_DEFAULT => Units::Default,
-	pbr_units_t::PBR_UNITS_BYTES => Units::Bytes
-    }
-}
-
 #[no_mangle]
 unsafe extern "C" fn pbr_progress_bar_set_units(progress_bar: *mut pbr_progress_bar_t, units: pbr_units_t) {
     if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
@@ -235,7 +242,16 @@ unsafe extern "C" fn pbr_progress_bar_set_width(progress_bar: *mut pbr_progress_
     }
 }
 
-// TODO: fn set_max_refresh_rate(&mut self, w: Option<Duration>)
+#[no_mangle]
+unsafe extern "C" fn pbr_progress_bar_set_max_refresh_rate(progress_bar: *mut pbr_progress_bar_t, duration: pbr_duration_t, w: u64) {
+    if (*progress_bar).handle == pbr_handle_t::PBR_HANDLE_STDOUT {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stdout>);
+	mb.set_max_refresh_rate(if w == 0 { None } else { Some(c_duration_to_rust_duration(duration, w)) });
+    } else {
+	let mb = &mut *((*progress_bar).progress_bar as *mut ProgressBar<Stderr>);
+	mb.set_max_refresh_rate(if w == 0 { None } else { Some(c_duration_to_rust_duration(duration, w)) });
+    }
+}
 
 #[no_mangle]
 unsafe extern "C" fn pbr_progress_bar_tick(progress_bar: *mut pbr_progress_bar_t) {
